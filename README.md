@@ -183,7 +183,8 @@ Demo hiện tại điều khiển con trỏ ảo trong browser, chưa điều kh
 
 ## 13. Tài liệu tham khảo
 
-* Edge Impulse Documentation: https://docs.edgeimpulse.com
-* Edge Impulse FOMO Object Detection: https://docs.edgeimpulse.com/docs/edge-impulse-studio/learning-blocks/object-detection/fomo-object-detection
-* WebAssembly Documentation: https://webassembly.org
-* MDN Web Docs - MediaDevices getUserMedia: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+- Edge Impulse Documentation: https://docs.edgeimpulse.com
+- Edge Impulse FOMO Object Detection: https://docs.edgeimpulse.com/studio/projects/learning-blocks/blocks/object-detection/fomo
+- Edge Impulse WebAssembly Browser Deployment: https://docs.edgeimpulse.com/hardware/deployments/run-webassembly-browser
+- MDN Web Docs - MediaDevices getUserMedia: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+- WebAssembly Documentation: https://webassembly.org
