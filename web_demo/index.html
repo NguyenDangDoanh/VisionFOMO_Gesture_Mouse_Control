@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Vision-FOMO Gesture Mouse Control</title>
+
+    <style>
+        #main-layout {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        #left-panel {
+            width: 660px;
+        }
+
+        #right-panel {
+            width: 420px;
+        }
+
+        #resultText {
+            margin-top: 0;
+            font-size: 18px;
+            white-space: pre-line;
+            min-height: 130px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        #gestureStatus {
+            margin-top: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            min-height: 35px;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #camera-box {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            border: 2px solid black;
+        }
+
+        #webcam {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 640px;
+            height: 480px;
+            transform: scaleX(-1);
+        }
+
+        #overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 640px;
+            height: 480px;
+        }
+
+        #smallCanvas {
+            display: none;
+        }
+
+        button {
+            margin: 10px 0;
+            padding: 8px 16px;
+            font-size: 16px;
+        }
+
+        #virtual-area {
+            margin-top: 20px;
+            width: 420px;
+            height: 220px;
+            border: 2px solid #333;
+            position: relative;
+            background: #f2f2f2;
+        }
+
+        #virtual-cursor {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: red;
+            position: absolute;
+            left: 210px;
+            top: 110px;
+            transform: translate(-50%, -50%);
+        }
+
+        .demo-button {
+            position: absolute;
+            width: 100px;
+            height: 50px;
+            top: 85px;
+            border: 2px solid black;
+            text-align: center;
+            line-height: 50px;
+            background: white;
+            font-weight: bold;
+        }
+
+        #leftButton {
+            left: 20px;
+        }
+
+        #rightButton {
+            right: 20px;
+        }
+
+        #clickEffect {
+            position: absolute;
+            left: 150px;
+            top: 80px;
+            width: 120px;
+            height: 60px;
+            line-height: 60px;
+            text-align: center;
+            border: 2px dashed #333;
+            font-weight: bold;
+            background: white;
+        }
+
+    </style>
+</head>
+
+<body>
+    <h1>Vision-FOMO Gesture Mouse Control</h1>
+
+    <button id="startBtn">Start Camera</button>
+
+    <div id="main-layout">
+        <div id="left-panel">
+            <div id="camera-box">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="overlay" width="640" height="480"></canvas>
+            </div>
+        </div>
+
+        <div id="right-panel">
+            <div id="resultText">Chưa chạy camera.</div>
+
+            <div id="gestureStatus">Gesture: Chưa có</div>
+
+            <div id="virtual-area">
+                <div id="leftButton" class="demo-button">LEFT</div>
+                <div id="rightButton" class="demo-button">RIGHT</div>
+                <div id="clickEffect">CLICK AREA</div>
+                <div id="virtual-cursor"></div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="smallCanvas" width="160" height="160"></canvas>
+
+    <script src="edge-impulse-standalone.js"></script>
+    <script src="run-impulse.js"></script>
+
+    <script>
+        const video = document.getElementById("webcam");
+        const overlay = document.getElementById("overlay");
+        const overlayCtx = overlay.getContext("2d");
+
+        const smallCanvas = document.getElementById("smallCanvas");
+        const smallCtx = smallCanvas.getContext("2d");
+
+        const resultText = document.getElementById("resultText");
+        const startBtn = document.getElementById("startBtn");
+
+        const virtualCursor = document.getElementById("virtual-cursor");
+        const gestureStatus = document.getElementById("gestureStatus");
+        const clickEffect = document.getElementById("clickEffect");
+        const leftButton = document.getElementById("leftButton");
+        const rightButton = document.getElementById("rightButton");
+
+        let classifier;
+        let running = false;
+        let lastCenterX = null;
+        let stableClosedCount = 0;
+        let lastClickTime = 0;
+
+        let smoothCursorX = 210;
+        let smoothCursorY = 110;
+
+        let lastSmoothGestureX = null;
+        let currentGestureText = "Gesture: CHƯA CÓ";
+        let gestureHoldCount = 0;
+
+        const GESTURE_MOVE_THRESHOLD = 5;
+        const GESTURE_HOLD_FRAMES = 3;
+
+        const CURSOR_SMOOTHING = 0.25; // càng nhỏ càng mượt, nhưng càng trễ
+        const CURSOR_DEADZONE = 3;     // bỏ qua rung nhỏ
+
+        let lastGoodDetection = null;
+        let lostFrameCount = 0;
+
+        const MAX_LOST_FRAMES = 3;
+
+        const MOVE_THRESHOLD = 12;      // tay dịch chuyển bao nhiêu pixel thì tính là kéo
+        const CLOSED_STABLE_FRAMES = 3; // cần nhận closed_hand liên tục 3 lần mới click
+        const CLICK_COOLDOWN = 1200;   // chống click liên tục, đơn vị ms
+
+        async function initModel() {
+            classifier = new EdgeImpulseClassifier();
+            await classifier.init();
+
+            const project = classifier.getProjectInfo();
+            console.log("Project:", project);
+
+            resultText.textContent = "Model đã load xong. Bấm Start Camera.";
+        }
+
+        async function startCamera() {
+            if (running) return;
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: 640,
+                    height: 480
+                },
+                audio: false
+            });
+
+            video.srcObject = stream;
+
+            await new Promise(resolve => {
+                video.onloadedmetadata = resolve;
+            });
+
+            running = true;
+            resultText.textContent = "Camera đang chạy...";
+            runLoop();
+        }
+
+        function imageToFeatures() {
+            smallCtx.drawImage(video, 0, 0, 160, 160);
+
+            const imageData = smallCtx.getImageData(0, 0, 160, 160);
+            const pixels = imageData.data;
+
+            let features = [];
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+
+                // Gộp R, G, B thành 1 số RGB888
+                const rgb = (r << 16) + (g << 8) + b;
+
+                features.push(rgb);
+            }
+
+            return features;
+        }
+
+        function drawDetection(det) {
+            const scaleX = 640 / 160;
+            const scaleY = 480 / 160;
+
+            // Vì video đang hiển thị dạng gương nên đảo tọa độ X khi vẽ box
+            const mirrorX = 160 - det.x - det.width;
+
+            const x = mirrorX * scaleX;
+            const y = det.y * scaleY;
+            const w = det.width * scaleX;
+            const h = det.height * scaleY;
+
+            overlayCtx.lineWidth = 3;
+            overlayCtx.strokeRect(x, y, w, h);
+
+            overlayCtx.font = "20px Arial";
+            overlayCtx.fillText(
+                `${det.label} ${(det.value * 100).toFixed(1)}%`,
+                x,
+                y > 25 ? y - 8 : y + 25
+            );
+
+            const cx = x + w / 2;
+            const cy = y + h / 2;
+
+            overlayCtx.beginPath();
+            overlayCtx.arc(cx, cy, 6, 0, Math.PI * 2);
+            overlayCtx.fill();
+        }
+
+        function handleGesture(det) {
+            const now = Date.now();
+
+            if (det.label === "open_hand") {
+                stableClosedCount = 0;
+
+                if (lastSmoothGestureX !== null) {
+                    const dx = smoothCursorX - lastSmoothGestureX;
+
+                    if (dx > GESTURE_MOVE_THRESHOLD) {
+                        currentGestureText = "Gesture: KÉO PHẢI";
+                        gestureHoldCount = GESTURE_HOLD_FRAMES;
+                    }
+                    else if (dx < -GESTURE_MOVE_THRESHOLD) {
+                        currentGestureText = "Gesture: KÉO TRÁI";
+                        gestureHoldCount = GESTURE_HOLD_FRAMES;
+                    }
+                    else {
+                        if (gestureHoldCount > 0) {
+                            gestureHoldCount--;
+                        }
+                        else {
+                            currentGestureText = "Gesture: GIỮ YÊN";
+                        }
+                    }
+                }
+                else {
+                    currentGestureText = "Gesture: ĐANG THEO DÕI TAY";
+                }
+
+                lastSmoothGestureX = smoothCursorX;
+            }
+
+            else if (det.label === "closed_hand") {
+                stableClosedCount++;
+
+                if (stableClosedCount >= CLOSED_STABLE_FRAMES && now - lastClickTime > CLICK_COOLDOWN) {
+                    currentGestureText = "Gesture: CLICK";
+                    lastClickTime = now;
+                    stableClosedCount = 0;
+                    gestureHoldCount = GESTURE_HOLD_FRAMES;
+                }
+                else {
+                    currentGestureText = "Gesture: CHỜ CLICK ỔN ĐỊNH";
+                }
+
+                lastSmoothGestureX = null;
+            }
+
+            return currentGestureText;
+        }
+
+        function updateVirtualCursor(det) {
+            const centerX = 160 - (det.x + det.width / 2);
+            const centerY = det.y + det.height / 2;
+
+            const targetX = (centerX / 160) * 420;
+            const targetY = (centerY / 160) * 220;
+
+            const dx = targetX - smoothCursorX;
+            const dy = targetY - smoothCursorY;
+
+            if (Math.abs(dx) > CURSOR_DEADZONE) {
+                smoothCursorX = smoothCursorX + dx * CURSOR_SMOOTHING;
+            }
+
+            if (Math.abs(dy) > CURSOR_DEADZONE) {
+                smoothCursorY = smoothCursorY + dy * CURSOR_SMOOTHING;
+            }
+
+            virtualCursor.style.left = smoothCursorX + "px";
+            virtualCursor.style.top = smoothCursorY + "px";
+        }
+
+        function isCursorInsideClickArea() {
+            return (
+                smoothCursorX >= 150 && smoothCursorX <= 270 &&
+                smoothCursorY >= 80 && smoothCursorY <= 140
+            );
+        }        
+
+        function updateControlBoxHighlight(gesture) {
+            leftButton.style.background = "white";
+            rightButton.style.background = "white";
+            clickEffect.style.background = "white";
+            virtualCursor.style.background = "red";
+
+            // LEFT/RIGHT sáng theo lệnh gesture
+            if (gesture.includes("KÉO TRÁI")) {
+                leftButton.style.background = "#a5d6a7";
+            }
+
+            if (gesture.includes("KÉO PHẢI")) {
+                rightButton.style.background = "#a5d6a7";
+            }
+
+            // CLICK AREA chỉ sáng nhẹ khi con trỏ đang nằm trong vùng
+            if (isCursorInsideClickArea()) {
+                clickEffect.style.background = "#fff59d";
+            }
+
+            // CLICK AREA chỉ sáng mạnh khi vừa nằm trong vùng vừa có gesture CLICK
+            if (isCursorInsideClickArea() && gesture.includes("CLICK")) {
+                clickEffect.style.background = "#ffcc80";
+                virtualCursor.style.background = "blue";
+            }
+        }
+
+        async function runLoop() {
+            if (!running) return;
+
+            try {
+                const features = imageToFeatures();
+                const result = classifier.classify(features);
+
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
+                let detections = result.results.filter(det => det.value >= 0.35);
+
+                if (detections.length > 0) {
+                    detections.sort((a, b) => b.value - a.value);
+                    detections = [detections[0]];
+                    lastGoodDetection = detections[0];
+                    lostFrameCount = 0;
+                }
+                else {
+                    lostFrameCount++;
+
+                    if (lastGoodDetection !== null && lostFrameCount <= MAX_LOST_FRAMES) {
+                        detections = [lastGoodDetection];
+                    }
+                    else {
+                        lastGoodDetection = null;
+                    }
+                }
+
+                let text = "";
+
+                if (detections.length === 0) {
+                    text = "Label: none\n";
+                    text += "Confidence: -\n";
+                    text += "Center 160x160: -\n";
+                    text += "Không thấy tay / confidence thấp\n";
+
+                    gestureStatus.textContent = "Gesture: KHÔNG CÓ TAY";
+                    leftButton.style.background = "white";
+                    rightButton.style.background = "white";
+                    clickEffect.style.background = "white";
+                    virtualCursor.style.background = "gray";
+
+                    lastSmoothGestureX = null;
+                    currentGestureText = "Gesture: KHÔNG CÓ TAY";
+                } else {
+                    detections.forEach(det => {
+                        drawDetection(det);
+
+                        const centerX = 160 - (det.x + det.width / 2);
+                        const centerY = det.y + det.height / 2;
+
+                        updateVirtualCursor(det);
+
+                        const gesture = handleGesture(det);
+                        gestureStatus.textContent = gesture;
+                        updateControlBoxHighlight(gesture);
+
+                        text += `Label: ${det.label}\n`;
+                        text += `Confidence: ${(det.value * 100).toFixed(1)}%\n`;
+                        text += `Center 160x160: x=${centerX.toFixed(1)}, y=${centerY.toFixed(1)}\n`;
+                    });
+                }
+
+                resultText.textContent = text;
+            }
+            catch (err) {
+                console.error(err);
+                resultText.textContent = "Lỗi khi chạy model: " + err.message;
+            }
+
+            // Chạy khoảng 5 FPS cho nhẹ máy
+            setTimeout(runLoop, 100);
+        }
+
+        startBtn.onclick = async () => {
+            try {
+                await startCamera();
+            }
+            catch (err) {
+                alert("Không mở được camera: " + err.message);
+            }
+        };
+
+        initModel();
+    </script>
+</body>
+</html>
