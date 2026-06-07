@@ -17,7 +17,7 @@
 Hệ thống sử dụng webcam trên trình duyệt để nhận diện trạng thái bàn tay theo thời gian thực. Mô hình AI được huấn luyện để nhận diện các lớp chính gồm:
 
 * `open_hand`: bàn tay mở
-* `closed_hand`: bàn tay khép
+* `closed_hand`: bàn tay nắm
 * `no_hand`: không có bàn tay hoặc không phát hiện được bàn tay
 
 Sau khi nhận diện, chương trình xử lý vị trí tâm của bàn tay để điều khiển con trỏ ảo trong giao diện browser. Khi phát hiện `open_hand`, hệ thống theo dõi sự thay đổi vị trí tâm bàn tay qua nhiều khung hình để xác định thao tác kéo trái hoặc kéo phải. Khi phát hiện `closed_hand` ổn định trong một khoảng thời gian ngắn, hệ thống xem đó là thao tác click.
@@ -38,7 +38,7 @@ Sau khi nhận diện, chương trình xử lý vị trí tâm của bàn tay đ
 * Hiển thị bounding box, nhãn nhận diện và độ tin cậy của mô hình.
 * Điều khiển con trỏ ảo trong giao diện trình duyệt.
 * Nhận biết thao tác kéo trái và kéo phải dựa trên chuyển động của bàn tay.
-* Nhận biết thao tác click bằng cử chỉ khép tay.
+* Nhận biết thao tác click bằng cử chỉ nắm tay.
 * Hiển thị vùng LEFT, RIGHT và CLICK AREA để minh họa thao tác điều khiển.
 * Chạy trực tiếp trên browser bằng mô hình WebAssembly export từ Edge Impulse.
 
@@ -125,7 +125,7 @@ Khi trình duyệt hỏi quyền sử dụng camera, chọn **Allow** hoặc **C
 
 * Đưa bàn tay mở trước camera để kiểm tra trạng thái `open_hand`.
 * Di chuyển tay sang trái hoặc phải để kiểm tra thao tác kéo trái/kéo phải.
-* Khép tay để kiểm tra thao tác click.
+* Nắm tay để kiểm tra thao tác click.
 * Đưa tay ra khỏi khung hình để kiểm tra trạng thái `no_hand`.
 
 ## 8. Quy trình thực hiện
