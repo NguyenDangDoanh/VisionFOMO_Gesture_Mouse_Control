@@ -61,7 +61,6 @@ VisionFOMO_Gesture_Mouse_Control/
 │
 ├── web_demo/
 │   ├── index.html
-│   ├── index_old.html
 │   ├── server.py
 │   ├── edge-impulse-standalone.js
 │   ├── edge-impulse-standalone.wasm
