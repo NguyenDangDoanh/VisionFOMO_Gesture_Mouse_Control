@@ -190,4 +190,3 @@ Demo hiện tại điều khiển con trỏ ảo trong browser, chưa điều kh
 - [5] MDN Web Docs, “WebAssembly.” https://developer.mozilla.org/en-US/docs/WebAssembly
 - [6] Edge Impulse, “Object detection with centroids.” https://docs.edgeimpulse.com/tutorials/end-to-end/object-detection-centroids
 - [7] S. Hymel et al., “Edge Impulse: An MLOps Platform for Tiny Machine Learning,” arXiv:2212.03332, 2022.
-- [8] GitHub Repository của đề tài, “Vision-FOMO Gesture Mouse Control.” https://github.com/NguyenDangDoanh/VisionFOMO_Gesture_Mouse_Control
