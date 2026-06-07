@@ -183,8 +183,11 @@ Demo hiện tại điều khiển con trỏ ảo trong browser, chưa điều kh
 
 ## 13. Tài liệu tham khảo
 
-- Edge Impulse Documentation: https://docs.edgeimpulse.com
-- Edge Impulse FOMO Object Detection: https://docs.edgeimpulse.com/studio/projects/learning-blocks/blocks/object-detection/fomo
-- Edge Impulse WebAssembly Browser Deployment: https://docs.edgeimpulse.com/hardware/deployments/run-webassembly-browser
-- MDN Web Docs - MediaDevices getUserMedia: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
-- WebAssembly Documentation: https://webassembly.org
+- [1] Edge Impulse, “FOMO - Edge Impulse Documentation.” https://docs.edgeimpulse.com/studio/projects/learning-blocks/blocks/object-detection/fomo
+- [2] Edge Impulse, “Run WebAssembly library (browser).” https://docs.edgeimpulse.com/hardware/deployments/run-webassembly-browser
+- [3] MDN Web Docs, “MediaDevices: getUserMedia() method.” https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+- [4] WebAssembly, “WebAssembly.” https://webassembly.org/
+- [5] MDN Web Docs, “WebAssembly.” https://developer.mozilla.org/en-US/docs/WebAssembly
+- [6] Edge Impulse, “Object detection with centroids.” https://docs.edgeimpulse.com/tutorials/end-to-end/object-detection-centroids
+- [7] S. Hymel et al., “Edge Impulse: An MLOps Platform for Tiny Machine Learning,” arXiv:2212.03332, 2022.
+- [8] GitHub Repository của đề tài, “Vision-FOMO Gesture Mouse Control.” https://github.com/NguyenDangDoanh/VisionFOMO_Gesture_Mouse_Control
